@@ -26,7 +26,7 @@ export async function sendTrackedChangesToApi(
   trackedChanges: Array<{ key: string; type: string; author: string; date: string; text: string; paragraphIndex: number }>,
   paragraphs: string[],
   debugLog?: (msg: string) => void
-): Promise<any[]> {
+): Promise<{ results: { [paragraphIndex: number]: any } }> {
   // Group tracked changes by paragraphIndex
   const grouped: { [pIdx: number]: { type: string; text: string; author: string }[] } = {};
   trackedChanges.forEach(tc => {
@@ -38,26 +38,28 @@ export async function sendTrackedChangesToApi(
     });
   });
 
-  // Prepare combined request
-  const apiUrl = "https://specter-law.onrender.com/analyze_changes_batch";
-  //const apiUrl = "http://127.0.0.1:8000/analyze_changes_batch";
-  const batchPayload = Object.entries(grouped).map(([pIdx, changelog]) => {
-    let paragraph = paragraphs[Number(pIdx)] || "";
-    paragraph = sanitizeText(paragraph);
+  // Build batch payload: one entry per paragraph with tracked changes
+  const batchPayload: Array<{ paragraphIndex: number; paragraph: string; changelog: { type: string; text: string; author: string }[] }> = [];
+  for (const [pIdx, changelog] of Object.entries(grouped)) {
+    const idx = Number(pIdx);
+    if (!changelog.length) continue;
+    const paragraph = sanitizeText(paragraphs[idx] || "");
     const sanitizedChangelog = changelog.map(entry => ({
       ...entry,
       text: sanitizeText(entry.text),
       author: sanitizeText(entry.author),
       type: sanitizeText(entry.type)
     }));
-    return {
-      paragraphIndex: Number(pIdx),
+    batchPayload.push({
+      paragraphIndex: idx,
       paragraph,
       changelog: sanitizedChangelog
-    };
-  });
+    });
+  }
   if (debugLog) debugLog("Sending batch payload to API: " + JSON.stringify(batchPayload));
   try {
+    const apiUrl = "https://specter-law.onrender.com/analyze_changes_batch";
+    //const apiUrl = "http://127.0.0.1:8000/analyze_changes_batch";
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
@@ -73,6 +75,7 @@ export async function sendTrackedChangesToApi(
       if (debugLog) debugLog(`Failed to send tracked changes batch`);
       throw new Error(`Failed to send tracked changes batch: "${responseText}"`);
     }
+    // The backend now returns { results: { [paragraphIndex]: result, ... } }
     return JSON.parse(responseText);
   } catch (err) {
     if (debugLog) debugLog("Fetch error: " + String(err));

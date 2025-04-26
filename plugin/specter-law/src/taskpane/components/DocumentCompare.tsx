@@ -162,13 +162,11 @@ const DocumentCompare: React.FC = () => {
         debug.push(msg);
         setDebugLogs(logs => [...logs, msg]);
       });
-      // The batch API returns { results: [...] }, but fallback to array if needed
-      if (Array.isArray(response)) {
-        setApiResponse(response);
-      } else if (response && typeof response === 'object' && Array.isArray((response as any).results)) {
-        setApiResponse((response as any).results);
+      // The batch API now returns { results: { [paragraphIndex]: result, ... } }
+      if (response && typeof response === 'object' && response.results && typeof response.results === 'object') {
+        setApiResponse(response.results);
       } else {
-        setApiResponse([]);
+        setApiResponse({});
       }
       setDebugLogs(debug);
     } catch (e) {
@@ -216,10 +214,15 @@ const DocumentCompare: React.FC = () => {
           ))}
         </div>
       )}
-      {apiResponse && (
+      {apiResponse && Object.keys(apiResponse).length > 0 && (
         <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
-          <h4>API Response:</h4>
-          <pre style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>{JSON.stringify(apiResponse, null, 2)}</pre>
+          <h4>API Response (by Paragraph):</h4>
+          {Object.entries(apiResponse).map(([pIdx, result]: [string, any]) => (
+            <div key={pIdx} style={{ marginBottom: 16, background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
+              <strong>Paragraph {pIdx}:</strong>
+              <pre style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>{JSON.stringify(result, null, 2)}</pre>
+            </div>
+          ))}
         </div>
       )}
       {paragraphs.length > 0 && (

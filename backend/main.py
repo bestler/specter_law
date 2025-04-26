@@ -132,7 +132,7 @@ class AnalyzeChangesBatchResponse(BaseModel):
 
 @app.post("/analyze_changes_batch", response_model=AnalyzeChangesBatchResponse)
 def analyze_changes_batch(request: AnalyzeChangesBatchRequest):
-    results = []
+    results = {}
     for item in request.items:
         try:
             single_result = analyze_changes(
@@ -144,11 +144,11 @@ def analyze_changes_batch(request: AnalyzeChangesBatchRequest):
             else:
                 result_dict = dict(single_result)
             result_dict["paragraphIndex"] = item.paragraphIndex
-            results.append(result_dict)
+            results[item.paragraphIndex] = result_dict
         except Exception as e:
-            results.append({
+            results[item.paragraphIndex] = {
                 "paragraphIndex": item.paragraphIndex,
                 "error": str(e)
-            })
+            }
     return {"results": results}
 
