@@ -3,8 +3,10 @@ import * as React from "react";
 import { useState } from "react";
 import { Button, Field, tokens, makeStyles } from "@fluentui/react-components";
 import { compareDocuments } from "../office/compare";
-import { extractParagraphs } from "../business/extractParagraphs";
+import { extractParagraphs, extractDocumentObject } from "../business/extractParagraphs";
 import { sendParagraphsToApi } from "../office/sendToApi";
+import { extractAnnotations } from "../office/extractAnnotations";
+import { extractTrackedChanges } from "../office/extractTrackedChanges";
 
 const useStyles = makeStyles({
   container: {
@@ -29,6 +31,9 @@ const DocumentCompare: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [paragraphs, setParagraphs] = useState<string[]>([]);
+  const [annotations, setAnnotations] = useState<Array<{ id: string; state: string; critique: string }>>([]);
+  const [docObject, setDocObject] = useState<any>(null);
+  const [trackedChanges, setTrackedChanges] = useState<Array<{ key: string; type: string; author: string; date: string; text: string }>>([]);
 
   // Handler for file input change
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,6 +82,48 @@ const DocumentCompare: React.FC = () => {
     }
   };
 
+  const handleExtractAnnotations = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await extractAnnotations();
+      setAnnotations(result);
+    } catch (e) {
+      setError("Failed to extract annotations. See console for details.");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShowDocumentObject = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const obj = await extractDocumentObject();
+      setDocObject(obj);
+    } catch (e) {
+      setError("Failed to extract document object. See console for details.");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShowTrackedChanges = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const changes = await extractTrackedChanges();
+      setTrackedChanges(changes);
+    } catch (e) {
+      setError("Failed to extract tracked changes. See console for details.");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <Field label="Choose a file to compare against:" className={styles.inputField}>
@@ -93,6 +140,15 @@ const DocumentCompare: React.FC = () => {
       <Button appearance="secondary" onClick={handleExtractAndSend} disabled={loading} style={{ marginTop: 10 }}>
         Extract & Show Paragraphs
       </Button>
+      <Button appearance="secondary" onClick={handleExtractAnnotations} disabled={loading} style={{ marginTop: 10 }}>
+        Extract Annotations
+      </Button>
+      <Button appearance="secondary" onClick={handleShowDocumentObject} disabled={loading} style={{ marginTop: 10 }}>
+        Show Document Object
+      </Button>
+      <Button appearance="secondary" onClick={handleShowTrackedChanges} disabled={loading} style={{ marginTop: 10 }}>
+        Show Tracked Changes
+      </Button>
       {paragraphs.length > 0 && (
         <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
           <h4>Extracted Paragraphs:</h4>
@@ -102,6 +158,45 @@ const DocumentCompare: React.FC = () => {
             ))}
           </ol>
         </div>
+      )}
+      {annotations.length > 0 ? (
+        <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
+          <h4>Extracted Annotations:</h4>
+          <ol>
+            {annotations.map((a) => (
+              <li key={a.id} style={{ marginBottom: 8, whiteSpace: "pre-wrap" }}>
+                <strong>ID:</strong> {a.id}<br />
+                <strong>State:</strong> {a.state}<br />
+                <strong>Critique:</strong> {a.critique}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        loading ? null : <div style={{ marginTop: 20 }}>No annotations found in this document.</div>
+      )}
+      {docObject && (
+        <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left", wordBreak: "break-all" }}>
+          <h4>Document Object:</h4>
+          <pre style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>{JSON.stringify(docObject, null, 2)}</pre>
+        </div>
+      )}
+      {trackedChanges.length > 0 ? (
+        <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
+          <h4>Tracked Changes:</h4>
+          <ol>
+            {trackedChanges.map((c) => (
+              <li key={c.key} style={{ marginBottom: 8, whiteSpace: "pre-wrap" }}>
+                <strong>Type:</strong> {c.type}<br />
+                <strong>Author:</strong> {c.author}<br />
+                <strong>Date:</strong> {c.date}<br />
+                <strong>Text:</strong> {c.text}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        loading ? null : <div style={{ marginTop: 20 }}>No tracked changes found in this document.</div>
       )}
       {error && <div className={styles.error}>{error}</div>}
     </div>

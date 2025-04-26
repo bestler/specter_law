@@ -4,6 +4,9 @@
 export async function compareDocuments(filePath: string, documentCompareOptions?: Word.DocumentCompareOptions): Promise<void> {
   try {
     await Word.run(async (context) => {
+      // Set change tracking mode to track all changes before comparing
+      context.document.changeTrackingMode = Word.ChangeTrackingMode.trackAll;
+      await context.sync();
       context.document.compare(filePath, documentCompareOptions);
       await context.sync();
     });
