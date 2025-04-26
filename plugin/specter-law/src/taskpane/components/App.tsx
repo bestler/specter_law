@@ -2,10 +2,10 @@ import * as React from "react";
 import Header from "./Header";
 import HeroList, { HeroListItem } from "./HeroList";
 import TextInsertion from "./TextInsertion";
+import DocumentCompare from "./DocumentCompare";
 import { makeStyles } from "@fluentui/react-components";
 import { Ribbon24Regular, LockOpen24Regular, DesignIdeas24Regular } from "@fluentui/react-icons";
-import { insertText, compareDocumentWith } from "../taskpane";
-import { CompareDocument } from "./CompareDocument";
+import { insertText } from "../taskpane";
 
 interface AppProps {
   title: string;
@@ -13,7 +13,7 @@ interface AppProps {
 
 const useStyles = makeStyles({
   root: {
-    minHeight: "100vh",
+    // No custom styles for now due to GriffelStyle typing issues
   },
 });
 
@@ -36,16 +36,12 @@ const App: React.FC<AppProps> = (props: AppProps) => {
     },
   ];
 
-  const handleCompare = (filePath: string) => {
-    compareDocumentWith(filePath);
-  };
-
   return (
     <div className={styles.root}>
       <Header logo="assets/logo-filled.png" title={props.title} message="Welcome" />
       <HeroList message="Discover what this add-in can do for you today!" items={listItems} />
       <TextInsertion insertText={insertText} />
-      <CompareDocument onCompare={handleCompare} />
+      <DocumentCompare />
     </div>
   );
 };
