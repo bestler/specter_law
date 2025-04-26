@@ -98,18 +98,23 @@ def analyze_changes(request: AnalyzeChangesRequest):
         data = response.json()
         print(data)
         # Extract the JSON output from Gemini's response
+        import re
+        import json as pyjson
         candidates = data.get("candidates", [])
         for candidate in candidates:
             parts = candidate.get("content", {}).get("parts", [])
             for part in parts:
                 text = part.get("text", "")
-                # Try to parse the first valid JSON object in the text
-                import json as pyjson
-                try:
-                    result = pyjson.loads(text)
-                    return AnalyzeChangesResponse(**result)
-                except Exception:
-                    continue
+                # Use regex to extract the first JSON object from the text
+                match = re.search(r'{[\s\S]*}', text)
+                if match:
+                    json_str = match.group(0)
+                    try:
+                        result = pyjson.loads(json_str)
+                        return AnalyzeChangesResponse(**result)
+                    except Exception as e:
+                        print(f"JSON parsing error: {e}\nRaw text: {json_str}")
+                        continue
         raise HTTPException(status_code=502, detail="No valid JSON returned from Gemini API.")
     except requests.RequestException as e:
         raise HTTPException(status_code=502, detail=f"Error communicating with Gemini API: {str(e)}")

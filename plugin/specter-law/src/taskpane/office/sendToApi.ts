@@ -39,10 +39,13 @@ export async function sendTrackedChangesToApi(
   });
 
   // Prepare and send requests
-  const apiUrl = "https://10.181.238.8:8000/analyze_changes";
+  const apiUrl = "https://specter-law.onrender.com/analyze_changes";
   //onst apiUrl = "http://127.0.0.1:8000/analyze_changes";
   const results: any[] = [];
+  let i = 0;
   for (const [pIdx, changelog] of Object.entries(grouped)) {
+    // Only executute first iteration
+    if (i > 0) break;
     let paragraph = paragraphs[Number(pIdx)] || "";
     paragraph = sanitizeText(paragraph);
     const sanitizedChangelog = changelog.map(entry => ({
@@ -77,6 +80,7 @@ export async function sendTrackedChangesToApi(
       if (debugLog) debugLog("Fetch error: " + String(err));
       throw err;
     }
+    i += 1;
   }
   return results;
 }
