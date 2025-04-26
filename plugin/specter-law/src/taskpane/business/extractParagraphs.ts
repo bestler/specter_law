@@ -4,11 +4,13 @@
 
 export async function extractParagraphs(): Promise<string[]> {
   return Word.run(async (context) => {
-    // Get the entire document body text
     const body = context.document.body;
-    body.load("text");
+    const paragraphs = body.paragraphs;
+    paragraphs.load("items");
     await context.sync();
-    return [body.text];
+    paragraphs.items.forEach(p => p.load("text"));
+    await context.sync();
+    return paragraphs.items.map(p => p.text);
   });
 }
 

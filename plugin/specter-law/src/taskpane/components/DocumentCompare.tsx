@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button, Field, tokens, makeStyles } from "@fluentui/react-components";
 import { compareDocuments } from "../office/compare";
 import { extractParagraphs, extractDocumentObject } from "../business/extractParagraphs";
-import { sendParagraphsToApi } from "../office/sendToApi";
+import { sendParagraphsToApi, sendTrackedChangesToApi } from "../office/sendToApi";
 import { extractAnnotations } from "../office/extractAnnotations";
 import { extractTrackedChanges } from "../office/extractTrackedChanges";
 
@@ -34,6 +34,9 @@ const DocumentCompare: React.FC = () => {
   const [annotations, setAnnotations] = useState<Array<{ id: string; state: string; critique: string }>>([]);
   const [docObject, setDocObject] = useState<any>(null);
   const [trackedChanges, setTrackedChanges] = useState<Array<{ key: string; type: string; author: string; date: string; text: string; paragraphIndex: number }>>([]);
+  const [apiResponse, setApiResponse] = useState<any>(null);
+  const [apiPayloads, setApiPayloads] = useState<any[]>([]);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   // Handler for file input change
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,6 +127,51 @@ const DocumentCompare: React.FC = () => {
     }
   };
 
+  const handleSendTrackedChangesToApi = async () => {
+    setError(null);
+    setLoading(true);
+    setApiResponse(null);
+    setApiPayloads([]);
+    setDebugLogs([]);
+    try {
+      const [changes, paragraphs] = await Promise.all([
+        extractTrackedChanges(),
+        extractParagraphs()
+      ]);
+      setTrackedChanges(changes);
+      setParagraphs(paragraphs);
+      // Prepare payloads for preview
+      const grouped: { [pIdx: number]: { type: string; text: string; author: string }[] } = {};
+      changes.forEach(tc => {
+        if (!grouped[tc.paragraphIndex]) grouped[tc.paragraphIndex] = [];
+        grouped[tc.paragraphIndex].push({
+          type: tc.type,
+          text: tc.text,
+          author: tc.author
+        });
+      });
+      const payloads = Object.entries(grouped).map(([pIdx, changelog]) => ({
+        paragraph: paragraphs[Number(pIdx)] || "",
+        changelog
+      }));
+      setApiPayloads(payloads);
+      // Send to API with debug logging
+      const debug: string[] = [];
+      const response = await sendTrackedChangesToApi(changes, paragraphs, (msg: string) => {
+        debug.push(msg);
+        setDebugLogs(logs => [...logs, msg]);
+      });
+      setApiResponse(response);
+      setDebugLogs(debug);
+    } catch (e) {
+      setError("Failed to send tracked changes to API. See console for details.");
+      setDebugLogs(logs => [...logs, String(e)]);
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <Field label="Choose a file to compare against:" className={styles.inputField}>
@@ -149,6 +197,23 @@ const DocumentCompare: React.FC = () => {
       <Button appearance="secondary" onClick={handleShowTrackedChanges} disabled={loading} style={{ marginTop: 10 }}>
         Show Tracked Changes
       </Button>
+      <Button appearance="secondary" onClick={handleSendTrackedChangesToApi} disabled={loading} style={{ marginTop: 10 }}>
+        Send Tracked Changes to API
+      </Button>
+      {apiPayloads.length > 0 && (
+        <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
+          <h4>JSON Payloads to be Sent:</h4>
+          {apiPayloads.map((payload, idx) => (
+            <pre key={idx} style={{ fontSize: 12, whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 8, borderRadius: 4, marginBottom: 8 }}>{JSON.stringify(payload, null, 2)}</pre>
+          ))}
+        </div>
+      )}
+      {apiResponse && (
+        <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
+          <h4>API Response:</h4>
+          <pre style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>{JSON.stringify(apiResponse, null, 2)}</pre>
+        </div>
+      )}
       {paragraphs.length > 0 && (
         <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
           <h4>Extracted Paragraphs:</h4>
@@ -210,6 +275,12 @@ const DocumentCompare: React.FC = () => {
         </div>
       ) : (
         loading ? null : <div style={{ marginTop: 20 }}>No tracked changes found in this document.</div>
+      )}
+      {debugLogs.length > 0 && (
+        <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left", color: '#888' }}>
+          <h4>Debug Log:</h4>
+          <pre style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>{debugLogs.join('\n')}</pre>
+        </div>
       )}
       {error && <div className={styles.error}>{error}</div>}
     </div>
