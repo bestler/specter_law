@@ -3,13 +3,12 @@ import Header from "./Header";
 import HeroList, { HeroListItem } from "./HeroList";
 import TextInsertion from "./TextInsertion";
 import DocumentCompare from "./DocumentCompare";
+import SelectionTrackedChanges from "./SelectionTrackedChanges";
 import { makeStyles } from "@fluentui/react-components";
 import { Ribbon24Regular, LockOpen24Regular, DesignIdeas24Regular } from "@fluentui/react-icons";
 import { insertText } from "../taskpane";
-
-interface AppProps {
-  title: string;
-}
+import { extractTrackedChanges } from "../office/extractTrackedChanges";
+import { extractParagraphs } from "../business/extractParagraphs";
 
 const useStyles = makeStyles({
   root: {
@@ -17,10 +16,65 @@ const useStyles = makeStyles({
   },
 });
 
-const App: React.FC<AppProps> = (props: AppProps) => {
+const App: React.FC<{ title: string }> = (props) => {
   const styles = useStyles();
-  // The list items are static and won't change at runtime,
-  // so this should be an ordinary const, not a part of state.
+  const [trackedChanges, setTrackedChanges] = React.useState<any[]>([]);
+  const [paragraphs, setParagraphs] = React.useState<string[]>([]);
+  const [selection, setSelection] = React.useState("");
+  const [selectedParagraphIndex, setSelectedParagraphIndex] = React.useState<number | null>(null);
+  const [showSelection, setShowSelection] = React.useState(false);
+
+  // Extract tracked changes and paragraphs on mount
+  React.useEffect(() => {
+    (async () => {
+      const [changes, paras] = await Promise.all([
+        extractTrackedChanges(),
+        extractParagraphs()
+      ]);
+      setTrackedChanges(changes);
+      setParagraphs(paras);
+    })();
+  }, []);
+
+  // Listen for selection changes
+  React.useEffect(() => {
+    const handler = async () => {
+      await Office.onReady();
+      await Word.run(async (context) => {
+        const sel = context.document.getSelection();
+        sel.load("text,paragraphs");
+        await context.sync();
+        setSelection(sel.text);
+        // Find which paragraph is selected
+        if (sel.paragraphs.items && sel.paragraphs.items.length > 0) {
+          const para = sel.paragraphs.items[0];
+          para.load("text");
+          await context.sync();
+          // Find index in paragraphs array
+          const idx = paragraphs.findIndex((p) => p === para.text);
+          setSelectedParagraphIndex(idx !== -1 ? idx : null);
+        } else {
+          setSelectedParagraphIndex(null);
+        }
+      });
+    };
+    // Add event listener
+    Office.context.document.addHandlerAsync(
+      Office.EventType.DocumentSelectionChanged,
+      handler
+    );
+    // Initial selection
+    handler();
+    return () => {
+      Office.context.document.removeHandlerAsync(
+        Office.EventType.DocumentSelectionChanged,
+        { handler }
+      );
+    };
+  }, [paragraphs]);
+
+  const handleShowSelection = () => setShowSelection((s) => !s);
+
   const listItems: HeroListItem[] = [
     {
       icon: <Ribbon24Regular />,
@@ -41,6 +95,13 @@ const App: React.FC<AppProps> = (props: AppProps) => {
       <Header logo="assets/logo-filled.png" title={props.title} message="Welcome" />
       <HeroList message="Discover what this add-in can do for you today!" items={listItems} />
       <TextInsertion insertText={insertText} />
+      <SelectionTrackedChanges
+        selection={selection}
+        selectedParagraphIndex={selectedParagraphIndex}
+        trackedChanges={trackedChanges}
+        onShow={handleShowSelection}
+        show={showSelection}
+      />
       <DocumentCompare />
     </div>
   );
