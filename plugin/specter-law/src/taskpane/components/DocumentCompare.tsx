@@ -33,7 +33,7 @@ const DocumentCompare: React.FC = () => {
   const [paragraphs, setParagraphs] = useState<string[]>([]);
   const [annotations, setAnnotations] = useState<Array<{ id: string; state: string; critique: string }>>([]);
   const [docObject, setDocObject] = useState<any>(null);
-  const [trackedChanges, setTrackedChanges] = useState<Array<{ key: string; type: string; author: string; date: string; text: string }>>([]);
+  const [trackedChanges, setTrackedChanges] = useState<Array<{ key: string; type: string; author: string; date: string; text: string; paragraphIndex: number }>>([]);
 
   // Handler for file input change
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,17 +183,30 @@ const DocumentCompare: React.FC = () => {
       )}
       {trackedChanges.length > 0 ? (
         <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
-          <h4>Tracked Changes:</h4>
-          <ol>
-            {trackedChanges.map((c) => (
-              <li key={c.key} style={{ marginBottom: 8, whiteSpace: "pre-wrap" }}>
-                <strong>Type:</strong> {c.type}<br />
-                <strong>Author:</strong> {c.author}<br />
-                <strong>Date:</strong> {c.date}<br />
-                <strong>Text:</strong> {c.text}
-              </li>
-            ))}
-          </ol>
+          <h4>Tracked Changes by Paragraph:</h4>
+          {(() => {
+            // Group tracked changes by paragraphIndex
+            const grouped: { [pIdx: number]: Array<typeof trackedChanges[0]> } = {};
+            trackedChanges.forEach(tc => {
+              if (!grouped[tc.paragraphIndex]) grouped[tc.paragraphIndex] = [];
+              grouped[tc.paragraphIndex].push(tc);
+            });
+            return Object.entries(grouped).map(([pIdx, changes]) => (
+              <div key={pIdx} style={{ marginBottom: 16 }}>
+                <strong>Paragraph {pIdx}:</strong>
+                <ol>
+                  {changes.map((c) => (
+                    <li key={c.key} style={{ marginBottom: 8, whiteSpace: "pre-wrap" }}>
+                      <strong>Type:</strong> {c.type}<br />
+                      <strong>Author:</strong> {c.author}<br />
+                      <strong>Date:</strong> {c.date}<br />
+                      <strong>Text:</strong> {c.text}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ));
+          })()}
         </div>
       ) : (
         loading ? null : <div style={{ marginTop: 20 }}>No tracked changes found in this document.</div>
