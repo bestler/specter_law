@@ -119,3 +119,36 @@ def analyze_changes(request: AnalyzeChangesRequest):
     except requests.RequestException as e:
         raise HTTPException(status_code=502, detail=f"Error communicating with Gemini API: {str(e)}")
 
+class AnalyzeChangesBatchItem(BaseModel):
+    paragraphIndex: int
+    paragraph: str
+    changelog: List[ChangeLogItem]
+
+class AnalyzeChangesBatchRequest(BaseModel):
+    items: List[AnalyzeChangesBatchItem]
+
+class AnalyzeChangesBatchResponse(BaseModel):
+    results: List[AnalyzeChangesResponse]
+
+@app.post("/analyze_changes_batch", response_model=AnalyzeChangesBatchResponse)
+def analyze_changes_batch(request: AnalyzeChangesBatchRequest):
+    results = []
+    for item in request.items:
+        try:
+            single_result = analyze_changes(
+                AnalyzeChangesRequest(paragraph=item.paragraph, changelog=item.changelog)
+            )
+            # Attach paragraphIndex for client reference
+            if hasattr(single_result, 'dict'):
+                result_dict = single_result.dict()
+            else:
+                result_dict = dict(single_result)
+            result_dict["paragraphIndex"] = item.paragraphIndex
+            results.append(result_dict)
+        except Exception as e:
+            results.append({
+                "paragraphIndex": item.paragraphIndex,
+                "error": str(e)
+            })
+    return {"results": results}
+

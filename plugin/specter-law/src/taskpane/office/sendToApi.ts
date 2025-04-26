@@ -38,14 +38,10 @@ export async function sendTrackedChangesToApi(
     });
   });
 
-  // Prepare and send requests
-  const apiUrl = "https://specter-law.onrender.com/analyze_changes";
-  //onst apiUrl = "http://127.0.0.1:8000/analyze_changes";
-  const results: any[] = [];
-  let i = 0;
-  for (const [pIdx, changelog] of Object.entries(grouped)) {
-    // Only executute first iteration
-    if (i > 0) break;
+  // Prepare combined request
+  const apiUrl = "https://specter-law.onrender.com/analyze_changes_batch";
+  //const apiUrl = "http://127.0.0.1:8000/analyze_changes_batch";
+  const batchPayload = Object.entries(grouped).map(([pIdx, changelog]) => {
     let paragraph = paragraphs[Number(pIdx)] || "";
     paragraph = sanitizeText(paragraph);
     const sanitizedChangelog = changelog.map(entry => ({
@@ -54,33 +50,32 @@ export async function sendTrackedChangesToApi(
       author: sanitizeText(entry.author),
       type: sanitizeText(entry.type)
     }));
-    const payload = {
+    return {
+      paragraphIndex: Number(pIdx),
       paragraph,
       changelog: sanitizedChangelog
     };
-    if (debugLog) debugLog("Sending payload to API: " + JSON.stringify(payload));
-    try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(payload),
-      });
-      if (debugLog) debugLog("API response status: " + response.status);
-      const responseText = await response.text();
-      if (debugLog) debugLog("API response body: " + responseText);
-      if (!response.ok) {
-        if (debugLog) debugLog(`Failed to send tracked changes for paragraph ${pIdx}`);
-        throw new Error(`Failed to send tracked changes for paragraph ${pIdx}: "${responseText}"`);
-      }
-      results.push(JSON.parse(responseText));
-    } catch (err) {
-      if (debugLog) debugLog("Fetch error: " + String(err));
-      throw err;
+  });
+  if (debugLog) debugLog("Sending batch payload to API: " + JSON.stringify(batchPayload));
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({ items: batchPayload }),
+    });
+    if (debugLog) debugLog("API response status: " + response.status);
+    const responseText = await response.text();
+    if (debugLog) debugLog("API response body: " + responseText);
+    if (!response.ok) {
+      if (debugLog) debugLog(`Failed to send tracked changes batch`);
+      throw new Error(`Failed to send tracked changes batch: "${responseText}"`);
     }
-    i += 1;
+    return JSON.parse(responseText);
+  } catch (err) {
+    if (debugLog) debugLog("Fetch error: " + String(err));
+    throw err;
   }
-  return results;
 }

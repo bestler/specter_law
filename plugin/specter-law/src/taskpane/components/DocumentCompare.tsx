@@ -151,6 +151,7 @@ const DocumentCompare: React.FC = () => {
         });
       });
       const payloads = Object.entries(grouped).map(([pIdx, changelog]) => ({
+        paragraphIndex: Number(pIdx),
         paragraph: paragraphs[Number(pIdx)] || "",
         changelog
       }));
@@ -161,7 +162,14 @@ const DocumentCompare: React.FC = () => {
         debug.push(msg);
         setDebugLogs(logs => [...logs, msg]);
       });
-      setApiResponse(response);
+      // The batch API returns { results: [...] }, but fallback to array if needed
+      if (Array.isArray(response)) {
+        setApiResponse(response);
+      } else if (response && typeof response === 'object' && Array.isArray((response as any).results)) {
+        setApiResponse((response as any).results);
+      } else {
+        setApiResponse([]);
+      }
       setDebugLogs(debug);
     } catch (e) {
       setError("Failed to send tracked changes to API. See console for details.");
