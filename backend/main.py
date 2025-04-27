@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -19,9 +22,9 @@ app.add_middleware(
 
 #TODO: Set up your Google API key in the environment variable GOOGLE_API_KEY
 # Google AI API (Gemini-pro) configuration
-#GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-GOOGLE_API_KEY = "AIzaSyBmUN4kV-2mA4oJq-AEBD4So7bSgpimNwU"
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
 
 GOOGLE_API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
 
