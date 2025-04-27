@@ -24,6 +24,10 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
+    marginTop: "32px",
+    marginLeft: "auto",
+    marginRight: "auto",
+    maxWidth: "300px",
   },
   fileInput: {
     width: "100%",
@@ -35,6 +39,8 @@ const useStyles = makeStyles({
     background: '#f8fafc',
     fontSize: '1em',
     textAlign: 'center',
+    display: 'block',
+    alignSelf: 'center',
   },
   compareButton: {
     maxWidth: '250px',
