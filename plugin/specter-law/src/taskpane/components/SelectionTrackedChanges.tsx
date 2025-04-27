@@ -2,6 +2,8 @@
 import * as React from "react";
 import { Spinner, Field, Button } from "@fluentui/react-components";
 import { sendTrackedChangesToApi, sendSingleTrackedChangesToApi } from "../office/sendToApi";
+import ClauseAnalysisResult from "./ClauseAnalysisResult";
+import { insertText } from "../taskpane";
 
 interface TrackedChange {
   key: string;
@@ -18,6 +20,8 @@ interface SelectionTrackedChangesProps {
   trackedChanges: TrackedChange[];
   loading: boolean;
   paragraphs: string[];
+  analyzeButtonIcon?: React.ReactNode;
+  analyzeButtonLabel?: string;
 }
 
 const SelectionTrackedChanges: React.FC<SelectionTrackedChangesProps> = ({
@@ -26,6 +30,8 @@ const SelectionTrackedChanges: React.FC<SelectionTrackedChangesProps> = ({
   trackedChanges,
   loading,
   paragraphs,
+  analyzeButtonIcon,
+  analyzeButtonLabel = "Analyze",
 }) => {
   const [sending, setSending] = React.useState(false);
   const [apiResponse, setApiResponse] = React.useState<any>(null);
@@ -59,17 +65,33 @@ const SelectionTrackedChanges: React.FC<SelectionTrackedChangesProps> = ({
     }
   };
 
+  // Replace selected paragraph with suggestion
+  const handleReplaceWithSuggestion = async (suggested: string) => {
+    try {
+      await Office.onReady();
+      await Word.run(async (context) => {
+        const sel = context.document.getSelection();
+        sel.insertText(suggested, Word.InsertLocation.replace);
+        await context.sync();
+      });
+    } catch (e) {
+      setApiError("Failed to replace paragraph: " + (e as any).message);
+    }
+  };
+
   return (
-    <div style={{ marginTop: 24, maxWidth: 400 }}>
+    <div style={{ marginTop: 24, maxWidth: 900, width: '80%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {loading ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 80 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 80, width: '100%' }}>
           <Spinner size="medium" label="Loading tracked changes..." />
         </div>
       ) : (
-        <div style={{ marginTop: 16 }}>
-          <Field label="Current Selection:">
-            <div style={{ background: "#f5f5f5", padding: 8, borderRadius: 4, minHeight: 32 }}>{selection || "(No selection)"}</div>
-          </Field>
+        <div style={{ marginTop: 16, width: '100%' }}>
+          <div style={{ maxWidth: 520, margin: '0 auto 32px auto', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 0 12px 0' }}>
+            <div style={{ fontWeight: 500, color: '#6366f1', marginBottom: 8, fontSize: '1.08em', textAlign: 'center', letterSpacing: 0.2, padding: '0.2em 0.5em' }}>Current Selection</div>
+            <div style={{ background: "#f5f5f5", padding: '1.2em 1.5em', borderRadius: 14, minHeight: 32, width: '100%', textAlign: 'center', fontSize: '1.08em', color: '#22223b', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>{selection || "(No selection)"}</div>
+          </div>
+          {/*
           <Field label="Tracked Changes for Selected Paragraph:">
             {changes.length > 0 ? (
               <ol>
@@ -86,30 +108,44 @@ const SelectionTrackedChanges: React.FC<SelectionTrackedChangesProps> = ({
               <div>No tracked changes for this paragraph.</div>
             )}
           </Field>
-          <Button
-            appearance="primary"
-            onClick={handleSendToApi}
-            disabled={sending || !(selection || selectedParagraph) || changes.length === 0}
-            style={{ marginTop: 16 }}
-          >
-            {sending ? "Sending..." : "Send to API"}
-          </Button>
-          {lastPayload && (
+          */}
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '0 auto 32px auto', maxWidth: 220 }}>
+            <Button
+              appearance="primary"
+              onClick={handleSendToApi}
+              disabled={sending || !(selection || selectedParagraph) || changes.length === 0}
+              style={{
+                marginTop: 0,
+                width: '100%',
+                borderRadius: 12,
+                alignSelf: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 600,
+                fontSize: '1.08em',
+                padding: '0.7em 0',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
+              }}
+              icon={analyzeButtonIcon ? <span>{analyzeButtonIcon}</span> : undefined}
+            >
+              {analyzeButtonLabel}
+            </Button>
+          </div>
+          {/* {lastPayload && (
             <div style={{ marginTop: 16 }}>
               <Field label="JSON Sent to API:">
                 <pre style={{ fontSize: 12, whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 8, borderRadius: 4 }}>{JSON.stringify(lastPayload, null, 2)}</pre>
               </Field>
             </div>
-          )}
-          {apiResponse && (
-            <div style={{ marginTop: 16 }}>
-              <Field label="API Response:">
-                <pre style={{ fontSize: 12, whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 8, borderRadius: 4 }}>{JSON.stringify(apiResponse, null, 2)}</pre>
-              </Field>
+          )} */}
+          {apiResponse && apiResponse.clauseIdentifier && apiResponse.analysis && (
+            <div style={{ marginTop: 24, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <ClauseAnalysisResult result={apiResponse} onReplaceWithSuggestion={handleReplaceWithSuggestion} />
             </div>
           )}
           {apiError && (
-            <div style={{ marginTop: 16, color: "red" }}>{apiError}</div>
+            <div style={{ marginTop: 16, color: "red", textAlign: 'center' }}>{apiError}</div>
           )}
         </div>
       )}

@@ -13,10 +13,41 @@ const useStyles = makeStyles({
     flexDirection: "column",
     alignItems: "center",
     marginTop: "20px",
+    width: "100%",
+    maxWidth: '900px',
+    marginLeft: "auto",
+    marginRight: "auto",
   },
   inputField: {
     marginBottom: "10px",
-    minWidth: "300px",
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+  fileInput: {
+    width: "100%",
+    maxWidth: '400px',
+    margin: "0 auto 10px auto",
+    padding: "8px 0",
+    borderRadius: '8px',
+    border: '1px solid #e0e7ff',
+    background: '#f8fafc',
+    fontSize: '1em',
+    textAlign: 'center',
+  },
+  compareButton: {
+    maxWidth: '250px',
+    margin: "0 auto 16px auto",
+    padding: "0.7em 1.5em",
+    borderRadius: '8px',
+    fontWeight: 600,
+    fontSize: '1em',
+    background: '#6366f1',
+    color: '#fff',
+    border: 'none',
+    cursor: 'pointer',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
   },
   error: {
     color: tokens.colorPaletteRedForeground1,
@@ -182,12 +213,13 @@ const DocumentCompare: React.FC<DocumentCompareProps> = ({ onCompareResults }) =
           type="file"
           onChange={handleFileChange}
           disabled={loading}
+          className={styles.fileInput}
         />
         {filePath && <div>Selected: {filePath}</div>}
       </Field>
-      <Button appearance="primary" onClick={handleCompare} disabled={loading || !filePath}>
+      <button className={styles.compareButton} onClick={handleCompare} disabled={loading || !filePath}>
         Compare Document
-      </Button>
+      </button>
       {/* 
       <Button appearance="secondary" onClick={handleExtractAndSend} disabled={loading} style={{ marginTop: 10 }}>
         Extract & Show Paragraphs
