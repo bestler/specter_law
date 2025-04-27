@@ -5,7 +5,6 @@ import { Button, Field, tokens, makeStyles } from "@fluentui/react-components";
 import { compareDocuments } from "../office/compare";
 import { extractParagraphs, extractDocumentObject } from "../business/extractParagraphs";
 import { sendParagraphsToApi, sendTrackedChangesToApi } from "../office/sendToApi";
-import { extractAnnotations } from "../office/extractAnnotations";
 import { extractTrackedChanges } from "../office/extractTrackedChanges";
 
 const useStyles = makeStyles({
@@ -25,13 +24,16 @@ const useStyles = makeStyles({
   },
 });
 
-const DocumentCompare: React.FC = () => {
+interface DocumentCompareProps {
+  onCompareResults?: (changes: any[], paragraphs: string[]) => void;
+}
+
+const DocumentCompare: React.FC<DocumentCompareProps> = ({ onCompareResults }) => {
   const styles = useStyles();
   const [filePath, setFilePath] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [paragraphs, setParagraphs] = useState<string[]>([]);
-  const [annotations, setAnnotations] = useState<Array<{ id: string; state: string; critique: string }>>([]);
   const [docObject, setDocObject] = useState<any>(null);
   const [trackedChanges, setTrackedChanges] = useState<Array<{ key: string; type: string; author: string; date: string; text: string; paragraphIndex: number }>>([]);
   const [apiResponse, setApiResponse] = useState<any>(null);
@@ -60,9 +62,18 @@ const DocumentCompare: React.FC = () => {
         setLoading(false);
         return;
       }
-      await compareDocuments(filePath); // This will only work if filePath is a valid path accessible to Office.js
+      await compareDocuments(filePath);
+      // After compare, extract tracked changes and paragraphs
+      const [changes, paras] = await Promise.all([
+        extractTrackedChanges(),
+        extractParagraphs()
+      ]);
+      setTrackedChanges(changes);
+      setParagraphs(paras);
+      if (onCompareResults) onCompareResults(changes, paras);
     } catch (e) {
-      setError("Failed to compare documents. See console for details.");
+      setError("Failed to compare documents or extract changes. See console for details.");
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -79,20 +90,6 @@ const DocumentCompare: React.FC = () => {
       // console.log("API response:", apiResponse);
     } catch (e) {
       setError("Failed to extract paragraphs. See console for details.");
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExtractAnnotations = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const result = await extractAnnotations();
-      setAnnotations(result);
-    } catch (e) {
-      setError("Failed to extract annotations. See console for details.");
       console.error(e);
     } finally {
       setLoading(false);
@@ -191,6 +188,7 @@ const DocumentCompare: React.FC = () => {
       <Button appearance="primary" onClick={handleCompare} disabled={loading || !filePath}>
         Compare Document
       </Button>
+      {/* 
       <Button appearance="secondary" onClick={handleExtractAndSend} disabled={loading} style={{ marginTop: 10 }}>
         Extract & Show Paragraphs
       </Button>
@@ -206,6 +204,7 @@ const DocumentCompare: React.FC = () => {
       <Button appearance="secondary" onClick={handleSendTrackedChangesToApi} disabled={loading} style={{ marginTop: 10 }}>
         Send Tracked Changes to API
       </Button>
+      */}
       {apiPayloads.length > 0 && (
         <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
           <h4>JSON Payloads to be Sent:</h4>
@@ -225,67 +224,11 @@ const DocumentCompare: React.FC = () => {
           ))}
         </div>
       )}
-      {paragraphs.length > 0 && (
-        <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
-          <h4>Extracted Paragraphs:</h4>
-          <ol>
-            {paragraphs.map((p, i) => (
-              <li key={i} style={{ marginBottom: 8, whiteSpace: "pre-wrap" }}>{p}</li>
-            ))}
-          </ol>
-        </div>
-      )}
-      {annotations.length > 0 ? (
-        <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
-          <h4>Extracted Annotations:</h4>
-          <ol>
-            {annotations.map((a) => (
-              <li key={a.id} style={{ marginBottom: 8, whiteSpace: "pre-wrap" }}>
-                <strong>ID:</strong> {a.id}<br />
-                <strong>State:</strong> {a.state}<br />
-                <strong>Critique:</strong> {a.critique}
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : (
-        loading ? null : <div style={{ marginTop: 20 }}>No annotations found in this document.</div>
-      )}
       {docObject && (
         <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left", wordBreak: "break-all" }}>
           <h4>Document Object:</h4>
           <pre style={{ fontSize: 12, whiteSpace: "pre-wrap" }}>{JSON.stringify(docObject, null, 2)}</pre>
         </div>
-      )}
-      {trackedChanges.length > 0 ? (
-        <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left" }}>
-          <h4>Tracked Changes by Paragraph:</h4>
-          {(() => {
-            // Group tracked changes by paragraphIndex
-            const grouped: { [pIdx: number]: Array<typeof trackedChanges[0]> } = {};
-            trackedChanges.forEach(tc => {
-              if (!grouped[tc.paragraphIndex]) grouped[tc.paragraphIndex] = [];
-              grouped[tc.paragraphIndex].push(tc);
-            });
-            return Object.entries(grouped).map(([pIdx, changes]) => (
-              <div key={pIdx} style={{ marginBottom: 16 }}>
-                <strong>Paragraph {pIdx}:</strong>
-                <ol>
-                  {changes.map((c) => (
-                    <li key={c.key} style={{ marginBottom: 8, whiteSpace: "pre-wrap" }}>
-                      <strong>Type:</strong> {c.type}<br />
-                      <strong>Author:</strong> {c.author}<br />
-                      <strong>Date:</strong> {c.date}<br />
-                      <strong>Text:</strong> {c.text}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ));
-          })()}
-        </div>
-      ) : (
-        loading ? null : <div style={{ marginTop: 20 }}>No tracked changes found in this document.</div>
       )}
       {debugLogs.length > 0 && (
         <div style={{ marginTop: 20, maxWidth: 400, textAlign: "left", color: '#888' }}>
