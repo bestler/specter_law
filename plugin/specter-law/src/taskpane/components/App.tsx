@@ -94,6 +94,7 @@ const App: React.FC<{ title: string }> = (props) => {
         selectedParagraphIndex={selectedParagraphIndex}
         trackedChanges={trackedChanges}
         loading={loadingTrackedChanges}
+        paragraphs={paragraphs}
       />
     </div>
   );
