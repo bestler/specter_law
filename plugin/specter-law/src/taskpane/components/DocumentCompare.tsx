@@ -57,9 +57,10 @@ const useStyles = makeStyles({
 
 interface DocumentCompareProps {
   onCompareResults?: (changes: any[], paragraphs: string[]) => void;
+  onStartCompare?: () => void;
 }
 
-const DocumentCompare: React.FC<DocumentCompareProps> = ({ onCompareResults }) => {
+const DocumentCompare: React.FC<DocumentCompareProps> = ({ onCompareResults, onStartCompare }) => {
   const styles = useStyles();
   const [filePath, setFilePath] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +86,7 @@ const DocumentCompare: React.FC<DocumentCompareProps> = ({ onCompareResults }) =
   };
 
   const handleCompare = async () => {
+    if (onStartCompare) onStartCompare(); // Hide UI and show spinner immediately
     setError(null);
     setLoading(true);
     try {

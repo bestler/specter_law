@@ -38,24 +38,48 @@ const SelectionTrackedChanges: React.FC<SelectionTrackedChangesProps> = ({
   const [apiError, setApiError] = React.useState<string | null>(null);
   const [lastPayload, setLastPayload] = React.useState<any>(null);
 
-  const changes = selectedParagraphIndex !== null
-    ? trackedChanges.filter(tc => tc.paragraphIndex === selectedParagraphIndex)
-    : [];
-  const selectedParagraph = selectedParagraphIndex !== null ? paragraphs[selectedParagraphIndex] : "";
+  // Always get the tracked changes for the selected paragraph at the time of click
+  const getCurrentChanges = () => {
+    // Defensive: ensure selectedParagraphIndex is valid
+    if (
+      selectedParagraphIndex === null ||
+      selectedParagraphIndex < 0 ||
+      selectedParagraphIndex >= paragraphs.length
+    ) {
+      return [];
+    }
+    return trackedChanges.filter(tc => tc.paragraphIndex === selectedParagraphIndex);
+  };
+  const getCurrentParagraph = () => {
+    // Defensive: ensure selectedParagraphIndex is valid
+    if (
+      selectedParagraphIndex === null ||
+      selectedParagraphIndex < 0 ||
+      selectedParagraphIndex >= paragraphs.length
+    ) {
+      return "";
+    }
+    return paragraphs[selectedParagraphIndex];
+  };
 
   const handleSendToApi = async () => {
     setSending(true);
     setApiResponse(null);
     setApiError(null);
     try {
-      // Use the original paragraphIndex values for changelog
-      const payloadParagraph = selection || selectedParagraph;
+      // Always use the current tracked changes and paragraph at the time of click
+      const payloadParagraph = selection || getCurrentParagraph();
+      const changes = getCurrentChanges();
+      if (!payloadParagraph) {
+        setApiError("No paragraph selected or found.");
+        setSending(false);
+        return;
+      }
       const payload = {
         paragraph: payloadParagraph,
         changelog: changes
       };
       setLastPayload(payload);
-      // Use the new single endpoint
       const response = await sendSingleTrackedChangesToApi(payloadParagraph, changes);
       setApiResponse(response);
     } catch (e: any) {
@@ -78,6 +102,12 @@ const SelectionTrackedChanges: React.FC<SelectionTrackedChangesProps> = ({
       setApiError("Failed to replace paragraph: " + (e as any).message);
     }
   };
+
+  // Hide results as soon as the selection changes
+  React.useEffect(() => {
+    setApiResponse(null);
+    setApiError(null);
+  }, [selection, selectedParagraphIndex]);
 
   return (
     <div style={{ marginTop: 24, maxWidth: 900, width: '80%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -113,7 +143,7 @@ const SelectionTrackedChanges: React.FC<SelectionTrackedChangesProps> = ({
             <Button
               appearance="primary"
               onClick={handleSendToApi}
-              disabled={sending || !(selection || selectedParagraph) || changes.length === 0}
+              disabled={sending || !(selection || getCurrentParagraph())}
               style={{
                 marginTop: 0,
                 width: '100%',

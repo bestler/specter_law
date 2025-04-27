@@ -161,10 +161,6 @@ export const ClauseAnalysisResult: React.FC<ClauseAnalysisResultProps> = ({ resu
           <div style={labelStyle}>Improvements (Receiving Party)</div>
           <div>{analysis.improvementsReceivingParty}</div>
         </div>
-        <div style={gridItemStyle}>
-          <div style={labelStyle}>Comments on Changes</div>
-          <div>{analysis.comments_on_changes}</div>
-        </div>
       </div>
     </div>
   );

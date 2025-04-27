@@ -79,17 +79,12 @@ const App: React.FC = () => {
 
   // Wrap handleCompareResults to also hide the compare section
   const handleCompareResults = async (changes: any[], paras: string[]) => {
-    setShowCompareSection(false);
-    setLoadingTrackedChanges(true);
-    setTrackedChanges([]);
-    setParagraphs([]);
-    // Simulate async loading for spinner UX (remove if not needed)
-    await new Promise((resolve) => setTimeout(resolve, 200));
     setTrackedChanges(changes);
     setParagraphs(paras);
     setLoadingTrackedChanges(false);
   };
 
+  // Pass handlers to DocumentCompare for immediate UI update
   return (
     <div className={styles.root} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <Header logo="assets/logo-filled.png" title={shortTitle} message="Specter Law" />
@@ -97,7 +92,18 @@ const App: React.FC = () => {
       <div style={{ width: '100%', maxWidth: 900, margin: '0 auto', textAlign: 'center', marginBottom: 32 }}>
       </div>
       {showCompareSection && (
-        <DocumentCompare onCompareResults={handleCompareResults} />
+        <DocumentCompare 
+          onCompareResults={handleCompareResults}
+          onStartCompare={() => {
+            setShowCompareSection(false);
+            setLoadingTrackedChanges(true);
+          }}
+        />
+      )}
+      {!showCompareSection && loadingTrackedChanges && (
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', margin: '32px 0' }}>
+          <span className="spinner" style={{ fontSize: 22, color: '#6366f1' }}>Analyzing document, please wait...</span>
+        </div>
       )}
       <SelectionTrackedChanges
         selection={selection}
