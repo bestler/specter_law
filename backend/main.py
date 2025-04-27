@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os
 import requests
+from clause_analysis import analyze_clause_change, analyze_clause_change_for_changes_response, ClauseAnalysisResponse
 
 app = FastAPI()
 
@@ -19,13 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-#TODO: Set up your Google API key in the environment variable GOOGLE_API_KEY
 # Google AI API (Gemini-pro) configuration
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-
-
 GOOGLE_API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
 
 class ClauseAnalysisRequest(BaseModel):
@@ -84,43 +81,19 @@ class AnalyzeChangesResponse(BaseModel):
     modified_text: str
     changes: List[ChangeSummary]
 
-@app.post("/analyze_changes", response_model=AnalyzeChangesResponse)
+@app.post("/analyze_changes", response_model=ClauseAnalysisResponse)
 def analyze_changes(request: AnalyzeChangesRequest):
-    print(request)
-    if not GOOGLE_API_KEY:
-        raise HTTPException(status_code=500, detail="Google API key not configured.")
-    prompt = f"""You are a document analysis agent.\n\nYour task is:\n- Analyze a given paragraph and an associated changelog.\n- Reconstruct the full original and modified paragraph texts based on the changelog.\n- Summarize all meaningful changes at a higher level (not per single word, but per logical unit like party name, date, address, etc.).\n- Output the result in standardized JSON format as specified below.\n\nInput Format:\n{{\n    \"paragraph\": \"{request.paragraph}\",\n    \"changelog\": {request.changelog}\n}}\n\nInstructions:\n- Assume that \"Added\" items were inserted into the paragraph.\n- \"Deleted\" items were removed, but the paragraph you are given is after the changes, so you may need to infer where the deletions occurred.\n- \"Formatted\" means formatting changes only (do not treat formatting-only changes as affecting the paragraph content).\n- Try to reconstruct the original paragraph before any changes as best as possible.\n- Group related changes logically (e.g., adding a party name and address together is one grouped change).\n- Summarize each change in a short human-readable description.\n- Ignore purely formatting changes (they are not material).\n\nOutput Format:\n{{\n    \"paragraph_id\": \"[optional id if available]\",\n    \"original_text\": \"[the original paragraph, that was provided to you]\",\n    \"modified_text\": \"[paragraph text after you apply your recognized changes]\",\n    \"changes\": [\n        {{\n            \"type\": \"Insertion | Deletion | Modification\",\n            \"description\": \"[short description of what changed, in one sentence]\"\n        }},\n        ...\n    ]\n}}\n\nImportant:\n- Do not hallucinate content.\n- Be faithful to the given inputs.\n- Be concise but complete.\n- Output valid JSON only, no explanations outside the JSON.\n"""
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}]
+    change_json = {
+        "paragraph_id": request.paragraph_id,
+        "original_text": request.paragraph,  # For now, use the input as both original and modified
+        "modified_text": request.paragraph,  # In real use, this would be the modified text
+        "changes": [{"type": c.type, "description": c.text} for c in request.changelog]
     }
-    headers = {"Content-Type": "application/json"}
-    params = {"key": GOOGLE_API_KEY}
     try:
-        response = requests.post(GOOGLE_API_URL_BASE, json=payload, headers=headers, params=params, timeout=60)
-        response.raise_for_status()
-        data = response.json()
-        print(data)
-        # Extract the JSON output from Gemini's response
-        import re
-        import json as pyjson
-        candidates = data.get("candidates", [])
-        for candidate in candidates:
-            parts = candidate.get("content", {}).get("parts", [])
-            for part in parts:
-                text = part.get("text", "")
-                # Use regex to extract the first JSON object from the text
-                match = re.search(r'{[\s\S]*}', text)
-                if match:
-                    json_str = match.group(0)
-                    try:
-                        result = pyjson.loads(json_str)
-                        return AnalyzeChangesResponse(**result)
-                    except Exception as e:
-                        print(f"JSON parsing error: {e}\nRaw text: {json_str}")
-                        continue
-        raise HTTPException(status_code=502, detail="No valid JSON returned from Gemini API.")
-    except requests.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Error communicating with Gemini API: {str(e)}")
+        result = analyze_clause_change_for_changes_response(change_json)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error in clause analysis: {str(e)}")
 
 class AnalyzeChangesBatchItem(BaseModel):
     paragraphIndex: int
@@ -154,4 +127,18 @@ def analyze_changes_batch(request: AnalyzeChangesBatchRequest):
                 "error": str(e)
             }
     return {"results": results}
+
+@app.post("/analyze_clause_changes", response_model=ClauseAnalysisResponse)
+def analyze_clause_changes(request: AnalyzeChangesRequest):
+    change_json = {
+        "paragraph_id": request.paragraph_id,
+        "original_text": request.paragraph,  # For now, use the input as both original and modified
+        "modified_text": request.paragraph,  # In real use, this would be the modified text
+        "changes": [{"type": c.type, "description": c.text} for c in request.changelog]
+    }
+    try:
+        result = analyze_clause_change_for_changes_response(change_json)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error in clause analysis: {str(e)}")
 
