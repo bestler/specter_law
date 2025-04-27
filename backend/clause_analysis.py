@@ -3,9 +3,6 @@
 This module provides a function to analyze a clause change summary (from /analyze_changes)
 and return a structured analysis using an LLM API (prompt placeholder included).
 """
-# Load environment variables
-from dotenv import load_dotenv
-load_dotenv()
 import os
 import requests
 import re
@@ -13,7 +10,7 @@ import json as pyjson
 from typing import Any, Dict, Optional
 from pydantic import BaseModel
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 GOOGLE_API_URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
 
 prompt = """
