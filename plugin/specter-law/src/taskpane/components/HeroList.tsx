@@ -18,9 +18,16 @@ const useStyles = makeStyles({
   listItem: {
     paddingBottom: "20px",
     display: "flex",
+    alignItems: "flex-start",
+    gap: "14px",
   },
   icon: {
-    marginRight: "10px",
+    marginRight: 0, // gap handles spacing
+    display: "flex",
+    alignItems: "center",
+    fontSize: "1.7em",
+    minWidth: "32px",
+    justifyContent: "center",
   },
   itemText: {
     fontSize: tokens.fontSizeBase300,
@@ -28,6 +35,10 @@ const useStyles = makeStyles({
   },
   welcome__main: {
     width: "100%",
+    maxWidth: "520px",
+    boxSizing: "border-box",
+    paddingLeft: "24px",
+    paddingRight: "24px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",

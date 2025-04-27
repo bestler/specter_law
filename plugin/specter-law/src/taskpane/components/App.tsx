@@ -1,15 +1,14 @@
 import * as React from "react";
 import Header from "./Header";
-import HeroList, { HeroListItem } from "./HeroList";
-import TextInsertion from "./TextInsertion";
 import DocumentCompare from "./DocumentCompare";
+import SelectionTrackedChanges from "./SelectionTrackedChanges";
+import HeroList, { HeroListItem } from "./HeroList";
 import { makeStyles } from "@fluentui/react-components";
-import { Ribbon24Regular, LockOpen24Regular, DesignIdeas24Regular } from "@fluentui/react-icons";
+import { Ribbon24Regular, LockOpen24Regular, DesignIdeas24Regular, Sparkle24Regular, DocumentText24Regular, TextGrammarArrowLeft24Regular } from "@fluentui/react-icons";
 import { insertText } from "../taskpane";
-
-interface AppProps {
-  title: string;
-}
+import { extractTrackedChanges } from "../office/extractTrackedChanges";
+import { extractParagraphs } from "../business/extractParagraphs";
+import { Text } from "@fluentui/react-components";
 
 const useStyles = makeStyles({
   root: {
@@ -17,31 +16,104 @@ const useStyles = makeStyles({
   },
 });
 
-const App: React.FC<AppProps> = (props: AppProps) => {
+const App: React.FC = () => {
   const styles = useStyles();
-  // The list items are static and won't change at runtime,
-  // so this should be an ordinary const, not a part of state.
-  const listItems: HeroListItem[] = [
+  const [trackedChanges, setTrackedChanges] = React.useState<any[]>([]);
+  const [paragraphs, setParagraphs] = React.useState<string[]>([]);
+  const [selection, setSelection] = React.useState("");
+  const [selectedParagraphIndex, setSelectedParagraphIndex] = React.useState<number | null>(null);
+  const [loadingTrackedChanges, setLoadingTrackedChanges] = React.useState(false);
+  const [showCompareSection, setShowCompareSection] = React.useState(true);
+
+  // Shorter, non-overlapping title
+  const shortTitle = "Specter Law AI";
+  const heroItems: HeroListItem[] = [
     {
-      icon: <Ribbon24Regular />,
-      primaryText: "Achieve more with Office integration",
+      icon: <DocumentText24Regular />,
+      primaryText: "Compare your contract with a reference document and see tracked changes."
     },
     {
-      icon: <LockOpen24Regular />,
-      primaryText: "Unlock features and functionality",
+      icon: <TextGrammarArrowLeft24Regular />,
+      primaryText: "Select a clause to analyze and get instant feedback."
     },
     {
-      icon: <DesignIdeas24Regular />,
-      primaryText: "Create and visualize like a pro",
-    },
+      icon: <Sparkle24Regular />,
+      primaryText: "Let AI suggest improvements and highlight risks for both parties."
+    }
   ];
 
+  // Listen for selection changes
+  React.useEffect(() => {
+    const handler = async () => {
+      await Office.onReady();
+      await Word.run(async (context) => {
+        const sel = context.document.getSelection();
+        sel.load("text,paragraphs");
+        await context.sync();
+        setSelection(sel.text);
+        // Find which paragraph is selected
+        if (sel.paragraphs.items && sel.paragraphs.items.length > 0) {
+          const para = sel.paragraphs.items[0];
+          para.load("text");
+          await context.sync();
+          // Find index in paragraphs array
+          const idx = paragraphs.findIndex((p) => p === para.text);
+          setSelectedParagraphIndex(idx !== -1 ? idx : null);
+        } else {
+          setSelectedParagraphIndex(null);
+        }
+      });
+    };
+    Office.context.document.addHandlerAsync(
+      Office.EventType.DocumentSelectionChanged,
+      handler
+    );
+    handler();
+    return () => {
+      Office.context.document.removeHandlerAsync(
+        Office.EventType.DocumentSelectionChanged,
+        { handler }
+      );
+    };
+  }, [paragraphs]);
+
+  // Wrap handleCompareResults to also hide the compare section
+  const handleCompareResults = async (changes: any[], paras: string[]) => {
+    setTrackedChanges(changes);
+    setParagraphs(paras);
+    setLoadingTrackedChanges(false);
+  };
+
+  // Pass handlers to DocumentCompare for immediate UI update
   return (
-    <div className={styles.root}>
-      <Header logo="assets/logo-filled.png" title={props.title} message="Welcome" />
-      <HeroList message="Discover what this add-in can do for you today!" items={listItems} />
-      <TextInsertion insertText={insertText} />
-      <DocumentCompare />
+    <div className={styles.root} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Header logo="assets/logo-filled.png" title={shortTitle} message="Specter Law" />
+      <HeroList message="How does Specter Law AI help you?" items={heroItems} />
+      <div style={{ width: '100%', maxWidth: 900, margin: '0 auto', textAlign: 'center', marginBottom: 32 }}>
+      </div>
+      {showCompareSection && (
+        <DocumentCompare 
+          onCompareResults={handleCompareResults}
+          onStartCompare={() => {
+            setShowCompareSection(false);
+            setLoadingTrackedChanges(true);
+          }}
+        />
+      )}
+      {!showCompareSection && loadingTrackedChanges && (
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', margin: '32px 0' }}>
+          <span className="spinner" style={{ fontSize: 22, color: '#6366f1' }}>Analyzing document, please wait...</span>
+        </div>
+      )}
+      <SelectionTrackedChanges
+        selection={selection}
+        selectedParagraphIndex={selectedParagraphIndex}
+        trackedChanges={trackedChanges}
+        loading={loadingTrackedChanges}
+        paragraphs={paragraphs}
+        analyzeButtonIcon={<Sparkle24Regular />}
+        analyzeButtonLabel="Analyze"
+      />
     </div>
   );
 };
