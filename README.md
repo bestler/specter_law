@@ -117,9 +117,6 @@ npm start
 - `npm run build` – Build the production bundle
 - `uvicorn main:app ...` – Start the FastAPI backend
 
-## License
-MIT
-
 ## Credits
 - Based on [OfficeDev/Office-Addin-TaskPane-React](https://github.com/OfficeDev/Office-Addin-TaskPane-React)
 - Uses [FastAPI](https://fastapi.tiangolo.com/) for backend
