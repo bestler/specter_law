@@ -3,6 +3,9 @@
 This module provides a function to analyze a clause change summary (from /analyze_changes)
 and return a structured analysis using an LLM API (prompt placeholder included).
 """
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
 import os
 import requests
 import re

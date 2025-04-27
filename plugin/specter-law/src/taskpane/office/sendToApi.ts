@@ -94,7 +94,7 @@ export async function sendSingleTrackedChangesToApi(
     changelog
   };
   if (debugLog) debugLog("Sending payload to API: " + JSON.stringify(payload));
-  const apiUrl = "https://specter-law.onrender.com/analyze_changes";
+  const apiUrl = "https://specter-law.onrender.com/analyze_clause_changes";
   const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
