@@ -25,7 +25,11 @@ const useStyles = makeStyles({
   },
 });
 
-const DocumentCompare: React.FC = () => {
+interface DocumentCompareProps {
+  onCompareResults?: (changes: any[], paragraphs: string[]) => void;
+}
+
+const DocumentCompare: React.FC<DocumentCompareProps> = ({ onCompareResults }) => {
   const styles = useStyles();
   const [filePath, setFilePath] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -60,9 +64,18 @@ const DocumentCompare: React.FC = () => {
         setLoading(false);
         return;
       }
-      await compareDocuments(filePath); // This will only work if filePath is a valid path accessible to Office.js
+      await compareDocuments(filePath);
+      // After compare, extract tracked changes and paragraphs
+      const [changes, paras] = await Promise.all([
+        extractTrackedChanges(),
+        extractParagraphs()
+      ]);
+      setTrackedChanges(changes);
+      setParagraphs(paras);
+      if (onCompareResults) onCompareResults(changes, paras);
     } catch (e) {
-      setError("Failed to compare documents. See console for details.");
+      setError("Failed to compare documents or extract changes. See console for details.");
+      console.error(e);
     } finally {
       setLoading(false);
     }

@@ -22,19 +22,7 @@ const App: React.FC<{ title: string }> = (props) => {
   const [paragraphs, setParagraphs] = React.useState<string[]>([]);
   const [selection, setSelection] = React.useState("");
   const [selectedParagraphIndex, setSelectedParagraphIndex] = React.useState<number | null>(null);
-  const [showSelection, setShowSelection] = React.useState(false);
-
-  // Extract tracked changes and paragraphs on mount
-  React.useEffect(() => {
-    (async () => {
-      const [changes, paras] = await Promise.all([
-        extractTrackedChanges(),
-        extractParagraphs()
-      ]);
-      setTrackedChanges(changes);
-      setParagraphs(paras);
-    })();
-  }, []);
+  const [loadingTrackedChanges, setLoadingTrackedChanges] = React.useState(false);
 
   // Listen for selection changes
   React.useEffect(() => {
@@ -58,12 +46,10 @@ const App: React.FC<{ title: string }> = (props) => {
         }
       });
     };
-    // Add event listener
     Office.context.document.addHandlerAsync(
       Office.EventType.DocumentSelectionChanged,
       handler
     );
-    // Initial selection
     handler();
     return () => {
       Office.context.document.removeHandlerAsync(
@@ -73,7 +59,16 @@ const App: React.FC<{ title: string }> = (props) => {
     };
   }, [paragraphs]);
 
-  const handleShowSelection = () => setShowSelection((s) => !s);
+  const handleCompareResults = async (changes: any[], paras: string[]) => {
+    setLoadingTrackedChanges(true);
+    setTrackedChanges([]);
+    setParagraphs([]);
+    // Simulate async loading for spinner UX (remove if not needed)
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    setTrackedChanges(changes);
+    setParagraphs(paras);
+    setLoadingTrackedChanges(false);
+  };
 
   const listItems: HeroListItem[] = [
     {
@@ -95,14 +90,13 @@ const App: React.FC<{ title: string }> = (props) => {
       <Header logo="assets/logo-filled.png" title={props.title} message="Welcome" />
       <HeroList message="Discover what this add-in can do for you today!" items={listItems} />
       <TextInsertion insertText={insertText} />
+      <DocumentCompare onCompareResults={handleCompareResults} />
       <SelectionTrackedChanges
         selection={selection}
         selectedParagraphIndex={selectedParagraphIndex}
         trackedChanges={trackedChanges}
-        onShow={handleShowSelection}
-        show={showSelection}
+        loading={loadingTrackedChanges}
       />
-      <DocumentCompare />
     </div>
   );
 };
