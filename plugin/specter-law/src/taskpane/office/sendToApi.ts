@@ -82,3 +82,33 @@ export async function sendTrackedChangesToApi(
     throw err;
   }
 }
+
+// Send a single paragraph and its tracked changes to the non-batch endpoint
+export async function sendSingleTrackedChangesToApi(
+  paragraph: string,
+  changelog: Array<{ key: string; type: string; author: string; date: string; text: string; paragraphIndex: number }>,
+  debugLog?: (msg: string) => void
+): Promise<any> {
+  const payload = {
+    paragraph,
+    changelog
+  };
+  if (debugLog) debugLog("Sending payload to API: " + JSON.stringify(payload));
+  const apiUrl = "https://specter-law.onrender.com/analyze_changes";
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    body: JSON.stringify(payload),
+  });
+  if (debugLog) debugLog("API response status: " + response.status);
+  const responseText = await response.text();
+  if (debugLog) debugLog("API response body: " + responseText);
+  if (!response.ok) {
+    if (debugLog) debugLog(`Failed to send tracked changes`);
+    throw new Error(`Failed to send tracked changes: "${responseText}"`);
+  }
+  return JSON.parse(responseText);
+}

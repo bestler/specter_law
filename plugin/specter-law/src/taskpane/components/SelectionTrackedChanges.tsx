@@ -1,7 +1,7 @@
 // UI for showing current selection and tracked changes for the selected paragraph
 import * as React from "react";
 import { Spinner, Field, Button } from "@fluentui/react-components";
-import { sendTrackedChangesToApi } from "../office/sendToApi";
+import { sendTrackedChangesToApi, sendSingleTrackedChangesToApi } from "../office/sendToApi";
 
 interface TrackedChange {
   key: string;
@@ -42,14 +42,15 @@ const SelectionTrackedChanges: React.FC<SelectionTrackedChangesProps> = ({
     setApiResponse(null);
     setApiError(null);
     try {
-      // Always send the full selected paragraph as the 'paragraph' field
+      // Use the original paragraphIndex values for changelog
       const payloadParagraph = selection || selectedParagraph;
       const payload = {
         paragraph: payloadParagraph,
         changelog: changes
       };
       setLastPayload(payload);
-      const response = await sendTrackedChangesToApi(changes, [payloadParagraph]);
+      // Use the new single endpoint
+      const response = await sendSingleTrackedChangesToApi(payloadParagraph, changes);
       setApiResponse(response);
     } catch (e: any) {
       setApiError(e.message || String(e));
