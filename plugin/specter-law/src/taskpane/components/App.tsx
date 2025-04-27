@@ -1,7 +1,6 @@
 import * as React from "react";
 import Header from "./Header";
 import HeroList, { HeroListItem } from "./HeroList";
-import TextInsertion from "./TextInsertion";
 import DocumentCompare from "./DocumentCompare";
 import SelectionTrackedChanges from "./SelectionTrackedChanges";
 import { makeStyles } from "@fluentui/react-components";
@@ -89,7 +88,6 @@ const App: React.FC<{ title: string }> = (props) => {
     <div className={styles.root}>
       <Header logo="assets/logo-filled.png" title={props.title} message="Welcome" />
       <HeroList message="Discover what this add-in can do for you today!" items={listItems} />
-      <TextInsertion insertText={insertText} />
       <DocumentCompare onCompareResults={handleCompareResults} />
       <SelectionTrackedChanges
         selection={selection}
