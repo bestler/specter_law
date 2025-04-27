@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [selection, setSelection] = React.useState("");
   const [selectedParagraphIndex, setSelectedParagraphIndex] = React.useState<number | null>(null);
   const [loadingTrackedChanges, setLoadingTrackedChanges] = React.useState(false);
+  const [showCompareSection, setShowCompareSection] = React.useState(true);
 
   // Shorter, non-overlapping title
   const shortTitle = "Specter Law AI";
@@ -76,7 +77,9 @@ const App: React.FC = () => {
     };
   }, [paragraphs]);
 
+  // Wrap handleCompareResults to also hide the compare section
   const handleCompareResults = async (changes: any[], paras: string[]) => {
+    setShowCompareSection(false);
     setLoadingTrackedChanges(true);
     setTrackedChanges([]);
     setParagraphs([]);
@@ -91,7 +94,11 @@ const App: React.FC = () => {
     <div className={styles.root} style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <Header logo="assets/logo-filled.png" title={shortTitle} message="Specter Law" />
       <HeroList message="How does Specter Law AI help you?" items={heroItems} />
-      <DocumentCompare onCompareResults={handleCompareResults} />
+      <div style={{ width: '100%', maxWidth: 900, margin: '0 auto', textAlign: 'center', marginBottom: 32 }}>
+      </div>
+      {showCompareSection && (
+        <DocumentCompare onCompareResults={handleCompareResults} />
+      )}
       <SelectionTrackedChanges
         selection={selection}
         selectedParagraphIndex={selectedParagraphIndex}
